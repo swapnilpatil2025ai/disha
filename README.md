@@ -10,7 +10,7 @@ Many students, especially from SC, ST, OBC, VJNT, minority and low-income famili
 
 It's built for students and for the teachers and NGO workers who guide them.
 
-> **Status:** early development (milestone M2: questionnaire and eligibility check). See the [product plan](docs/product-plan.md).
+> **Status:** early development (milestone M3: AI assistant and Marathi details). See the [product plan](docs/product-plan.md).
 
 ## Principles
 1. **Accurate before clever.** Eligibility is checked by rules against verified data. The AI explains; it never guesses facts.
@@ -33,6 +33,9 @@ python -m venv .venv
 |---|---|
 | `app.py` | The web app (Streamlit): questionnaire and results, English and Marathi |
 | `eligibility.py` | Rules that decide eligibility, with reasons for each match |
+| `assistant.py` | AI assistant (Claude) that answers follow-up questions from the matched, verified data only |
+| `tools/translate_data.py` | Drafts Marathi versions of scholarship details for human review |
+| `.streamlit/secrets.toml.example` | Template for your API key (the real `secrets.toml` is never committed) |
 | `tests/` | Sample students with known correct answers (`.\.venv\Scripts\python.exe -m pytest`) |
 | `data/scholarships.csv` | Verified scholarship data (see `data/README.md`) |
 | `docs/product-plan.md` | Problem, users, scope, metrics, risks, milestones |

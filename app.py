@@ -1,5 +1,7 @@
-﻿import streamlit as st
+﻿import anthropic
+import streamlit as st
 
+from assistant import MAX_QUESTIONS, build_system_prompt, stream_reply
 from eligibility import (
     CATEGORIES, COURSES, GENDERS, MINORITY_COMMUNITIES,
     Student, find_eligible, load_scholarships, split,
@@ -9,7 +11,7 @@ TEXT = {
     "English": {
         "tagline": "Find the scholarships open to you after 12th.",
         "intro": "Answer a few questions. We'll show every scholarship you qualify for, the documents you need and how to apply.",
-        "privacy": "Your answers are not saved anywhere.",
+        "privacy": "Your answers are not saved anywhere. Checking eligibility happens without AI.",
         "category": "Your category (as on your caste certificate)",
         "minority": "Are you from a minority community?",
         "no_minority": "No",
@@ -35,6 +37,14 @@ TEXT = {
         "another": "Check another student",
         "download": "Download checklist",
         "details_lang": "",
+        "machine_translated": "",
+        "ask_title": "Have a question? Ask Disha",
+        "ask_intro": "Answers use only the scholarship information shown above. Your questions and the answers you gave are sent to our AI provider to write a reply; they're not saved.",
+        "ask_unavailable": "The assistant isn't set up yet.",
+        "ask_placeholder": "Ask about documents, steps or rules…",
+        "ask_limit": "You've reached the question limit for this session. Check another student to start again.",
+        "ask_error": "Sorry, the assistant isn't available right now. Please try again in a moment.",
+        "suggestions": ["Which documents should I get first?", "What is CAP?", "What happens if I fail a year?"],
         "reviewers": "For reviewers",
         "reviewer": "Reviewer mode: include draft (unverified) data",
         "reviewer_help": "Only for checking the data. Students should see verified data only.",
@@ -73,7 +83,7 @@ TEXT = {
     "मराठी": {
         "tagline": "१२वी नंतर तुमच्यासाठी उपलब्ध शिष्यवृत्ती जाणून घ्या.",
         "intro": "काही प्रश्नांची उत्तरे द्या. तुम्ही पात्र असलेल्या सर्व शिष्यवृत्ती, आवश्यक कागदपत्रे आणि अर्ज कसा करायचा ते आम्ही दाखवू.",
-        "privacy": "तुमची उत्तरे कुठेही जतन केली जात नाहीत.",
+        "privacy": "तुमची उत्तरे कुठेही जतन केली जात नाहीत. पात्रता तपासणी AI शिवाय होते.",
         "category": "तुमचा प्रवर्ग (जात प्रमाणपत्रानुसार)",
         "minority": "तुम्ही अल्पसंख्याक समुदायातील आहात का?",
         "no_minority": "नाही",
@@ -99,6 +109,14 @@ TEXT = {
         "another": "दुसऱ्या विद्यार्थ्याची माहिती तपासा",
         "download": "यादी डाउनलोड करा",
         "details_lang": "योजनेची सविस्तर माहिती सध्या इंग्रजीत आहे. मराठी लवकरच येईल.",
+        "machine_translated": "मराठी माहिती AI ने भाषांतरित केली आहे आणि तिची तपासणी सुरू आहे. शंका असल्यास अधिकृत पान पाहा.",
+        "ask_title": "काही प्रश्न आहे? दिशाला विचारा",
+        "ask_intro": "उत्तरे फक्त वर दाखवलेल्या शिष्यवृत्ती माहितीवर आधारित असतात. उत्तर तयार करण्यासाठी तुमचे प्रश्न आणि तुम्ही दिलेली माहिती आमच्या AI सेवेकडे पाठवली जाते; ती जतन केली जात नाही.",
+        "ask_unavailable": "सहाय्यक अजून सुरू केलेला नाही.",
+        "ask_placeholder": "कागदपत्रे, अर्ज प्रक्रिया किंवा नियमांबद्दल विचारा…",
+        "ask_limit": "या सत्रातील प्रश्नांची मर्यादा पूर्ण झाली. पुन्हा सुरू करण्यासाठी दुसऱ्या विद्यार्थ्याची माहिती तपासा.",
+        "ask_error": "माफ करा, सहाय्यक सध्या उपलब्ध नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा.",
+        "suggestions": ["आधी कोणती कागदपत्रे मिळवू?", "CAP म्हणजे काय?", "एखाद्या वर्षी नापास झालो तर काय?"],
         "reviewers": "पडताळणी करणाऱ्यांसाठी",
         "reviewer": "पडताळणी मोड: मसुदा (पडताळणी न झालेली) माहितीही दाखवा",
         "reviewer_help": "फक्त माहिती तपासण्यासाठी. विद्यार्थ्यांना फक्त पडताळलेली माहिती दिसावी.",
@@ -192,19 +210,30 @@ def checklist_text(student: Student, matches) -> str:
     return "\n".join(lines)
 
 
-def show_results(student: Student):
+def detail(s: dict, name: str) -> str:
+    """A scholarship field in the chosen language, falling back to English."""
+    if language == "मराठी" and s.get(f"{name}_mr", "").strip():
+        return s[f"{name}_mr"]
+    return s[name]
+
+
+def show_results(student: Student) -> list:
     if not scholarships:
         st.warning(t["no_verified"])
-        return
+        return []
     matches = find_eligible(student, scholarships)
     if not matches:
         st.info(t["none"])
-        return
+        return []
 
     st.subheader(t["found"].format(n=len(matches)))
     st.info(t["portal_note"])
-    if t["details_lang"]:
-        st.caption(t["details_lang"])
+    if language == "मराठी":
+        rows = [m.scholarship for m in matches]
+        if any(not s["benefit_mr"].strip() for s in rows):
+            st.caption(t["details_lang"])
+        elif any(s["mr_reviewed"].strip() != "Yes" for s in rows):
+            st.caption(t["machine_translated"])
 
     for m in matches:
         s = m.scholarship
@@ -214,7 +243,7 @@ def show_results(student: Student):
             name = s["name_mr"] if language == "मराठी" and s["name_mr"] else s["name_en"]
             st.markdown(f"### {name}")
             st.caption(f"{t['provider']}: {s['provider']}")
-            st.markdown(f"**{t['benefit']}:** {s['benefit']}")
+            st.markdown(f"**{t['benefit']}:** {detail(s, 'benefit')}")
 
             st.markdown(f"**{t['why']}:**")
             for code, params in m.reasons:
@@ -223,18 +252,70 @@ def show_results(student: Student):
                 st.markdown(f"- ⚠️ {t['careful']}: {t['cautions'][code].format(**localize(params))}")
 
             with st.expander(t["documents"]):
-                for doc in split(s["documents"]):
+                for doc in split(detail(s, "documents")):
                     st.markdown(f"- {doc}")
             with st.expander(t["steps"]):
-                for i, step in enumerate(split(s["how_to_apply"]), 1):
+                for i, step in enumerate(split(detail(s, "how_to_apply")), 1):
                     st.markdown(f"{i}. {step}")
             if s["notes"]:
                 with st.expander(t["rules"]):
-                    st.write(s["notes"])
+                    st.write(detail(s, "notes"))
             st.link_button(t["official"], s["official_url"])
 
     st.download_button(t["download"], checklist_text(student, matches),
                        file_name="disha-checklist.txt")
+    return matches
+
+
+def get_client() -> anthropic.Anthropic | None:
+    try:
+        key = st.secrets["ANTHROPIC_API_KEY"]
+    except Exception:  # no secrets file, or key missing
+        return None
+    return anthropic.Anthropic(api_key=key)
+
+
+def show_assistant(student: Student, matches: list):
+    st.divider()
+    st.subheader(t["ask_title"])
+    client = get_client()
+    if client is None:
+        st.caption(t["ask_unavailable"])
+        return
+    st.caption(t["ask_intro"])
+
+    chat = st.session_state.setdefault("chat", [])
+    for message in chat:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    asked = sum(1 for message in chat if message["role"] == "user")
+    if asked >= MAX_QUESTIONS:
+        st.info(t["ask_limit"])
+        return
+
+    question = None
+    if not chat:
+        cols = st.columns(len(t["suggestions"]))
+        for col, suggestion in zip(cols, t["suggestions"]):
+            if col.button(suggestion, use_container_width=True):
+                question = suggestion
+    question = st.chat_input(t["ask_placeholder"]) or question
+    if not question:
+        return
+
+    chat.append({"role": "user", "content": question})
+    with st.chat_message("user"):
+        st.markdown(question)
+    system = build_system_prompt(student, matches, language)
+    with st.chat_message("assistant"):
+        try:
+            reply = st.write_stream(stream_reply(client, system, chat, language))
+        except anthropic.APIError:
+            chat.pop()
+            st.error(t["ask_error"])
+            return
+    chat.append({"role": "assistant", "content": reply})
 
 
 if st.session_state.student is None:
@@ -256,10 +337,13 @@ if st.session_state.student is None:
             )
             st.rerun()
 else:
-    show_results(st.session_state.student)
+    matches = show_results(st.session_state.student)
     if st.button(t["another"]):
         st.session_state.student = None
+        st.session_state.chat = []
         st.rerun()
+    if matches:
+        show_assistant(st.session_state.student, matches)
 
 st.divider()
 st.caption(t["confirm"])
