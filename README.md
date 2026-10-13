@@ -36,6 +36,7 @@ python -m venv .venv
 | `assistant.py` | AI assistant (Claude) that answers follow-up questions from the matched, verified data only |
 | `tools/translate_data.py` | Drafts Marathi versions of scholarship details for human review |
 | `.streamlit/secrets.toml.example` | Template for your API key (the real `secrets.toml` is never committed) |
-| `tests/` | Sample students with known correct answers (`.\.venv\Scripts\python.exe -m pytest`) |
+| `tests/` | Sample students with known correct answers, plus data checks (`.\.venv\Scripts\python.exe -m pytest`) |
+| `evals/` | Tricky questions for the AI assistant, graded automatically; latest results in `evals/results.md` |
 | `data/scholarships.csv` | Verified scholarship data (see `data/README.md`) |
 | `docs/product-plan.md` | Problem, users, scope, metrics, risks, milestones |
