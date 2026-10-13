@@ -31,6 +31,11 @@ Studying abroad · in-depth career counseling · other states · user accounts �
 2. **Verified data is the source of truth.** Every scholarship has an official source link and a "last verified" date. If the information isn't in our data, the assistant says "I don't know" and points to the official portal.
 3. **No login, minimal personal data.** Profile answers are used for that session only and are not stored. Caste and income are sensitive, and many users are minors.
 
+### Decision log
+| Date | Decision | Why |
+|---|---|---|
+| 2026-10-14 | Keep assistant answers detailed (often 15–25 lines) rather than capping them at 5–8 lines | Answers were accurate and well structured in evals. Revisit after testing with real students on phones. |
+
 ## 5. Data (scholarships to verify first)
 Start with roughly 20 of the highest-impact schemes, each checked against its official source:
 - **MahaDBT portal** schemes (post-matric scholarships for SC / ST / OBC / VJNT / SBC, tuition-fee and exam-fee reimbursement, EBC and hostel allowance schemes)
