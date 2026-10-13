@@ -20,11 +20,12 @@ It's built for students and for the teachers and NGO workers who guide them.
 ## Run it locally
 Requires Python 3.11+.
 
+In PowerShell, from the project folder:
+
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app.py
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\streamlit.exe run app.py
 ```
 
 ## Project structure
