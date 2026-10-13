@@ -22,6 +22,14 @@ def test_prompt_without_matches_says_so():
     assert "No scholarships matched this profile." in build_system_prompt(STUDENT, [], "English")
 
 
+def test_prompt_does_not_reveal_gender():
+    from dataclasses import replace
+    girl = build_system_prompt(STUDENT, find_eligible(STUDENT, ALL), "English")
+    boy_student = replace(STUDENT, gender="Male")
+    boy = build_system_prompt(boy_student, find_eligible(boy_student, ALL), "English")
+    assert girl == boy
+
+
 def test_prompt_keeps_marathi_text_readable():
     matches = find_eligible(STUDENT, ALL)
     assert "भारत सरकार" in build_system_prompt(STUDENT, matches, "मराठी")

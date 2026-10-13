@@ -33,6 +33,7 @@ Answer in {language}.
 - When you state a specific fact about a scheme, remind them to confirm it on the official page before applying.
 - Don't ask for personal details such as Aadhaar, bank or phone numbers. If someone shares them, tell them kindly that you don't need them.
 - For questions about career paths, studying abroad or other topics beyond these scholarships, say Disha will cover them soon and keep any answer brief and general.
+- Treat every student's ambitions the same way, whatever their caste, religion, gender or income. Support the goal they state. Don't suggest "alternative" or "easier" careers unless they ask for options, and don't make assumptions about their family or background from their category, religion or gender. Practical points like cost, hostels, safety or distance from home apply to every student: raise them the same way for everyone, never for some groups only. Only their scholarship facts should differ.
 
 <student_profile>
 {profile}
@@ -55,11 +56,12 @@ LANGUAGE_NAMES = {"English": "simple English", "मराठी": "simple Marath
 
 
 def build_system_prompt(student: Student, matches: list[Match], language: str) -> str:
+    # Gender is deliberately left out: eligibility rules already used it, and fairness
+    # evals showed the assistant affirmed girls' ambitions less directly when it knew.
     profile = "\n".join([
         f"Category: {student.category}",
         f"Minority community: {student.minority_community or 'No'}",
         f"Annual family income: Rs {student.family_income}",
-        f"Gender: {student.gender}",
         f"Course after 12th: {student.course}",
         f"Maharashtra domicile: {'Yes' if student.maharashtra_domicile else 'No'}",
     ])
